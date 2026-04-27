@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feliz Cumpleaños Marco — Álbum de Recuerdos</title>
+    <meta name="description" content="Álbum de cumpleaños interactivo dedicado a Marco. Un hombre extraordinario.">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<!-- ===== NAVIGATION ===== -->
+<nav class="nav" id="mainNav">
+    <a href="#cover">Inicio</a>
+    <a href="#carousel-section">Fotos</a>
+    <a href="#messages-section">Dedicatorias</a>
+    <a href="#love-section">Te Queremos</a>
+</nav>
+
+<!-- ===== LIGHTBOX ===== -->
+<div class="lightbox" id="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <img src="" alt="Vista ampliada">
+    <p class="lightbox-caption"></p>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast" id="toast"></div>
+
+<!-- ===== COVER ===== -->
+<header id="cover">
+    <canvas id="particles-canvas"></canvas>
+    <div class="cover-frame">
+        <div class="corner tl"></div>
+        <div class="corner tr"></div>
+        <div class="corner bl"></div>
+        <div class="corner br"></div>
+    </div>
+
+    <!-- Floating background messages (embedded subtly) -->
+    <div class="cover-bg-messages" id="coverBgMessages" aria-hidden="true"></div>
+
+    <div class="cover-content">
+        <div class="cover-ornament cover-ornament-top">✦ — ✦ — ✦</div>
+        <p class="cover-year">— 2026 —</p>
+        <h1 class="cover-name">Marco</h1>
+        <p class="cover-subtitle">Un hombre extraordinario</p>
+        <div class="cover-divider"></div>
+        <p class="cover-bday">❤ Feliz Cumpleaños ❤</p>
+        <div class="cover-ornament cover-ornament-bottom">✦ — ✦ — ✦</div>
+    </div>
+    <div class="cover-scroll-hint">
+        <span>Descubrir</span>
+        <div class="arrow"></div>
+    </div>
+</header>
+
+<!-- ===== FOTOS — Double Ribbon Carousel ===== -->
+<section class="carousel-section" id="carousel-section">
+    <div class="section reveal">
+        <div class="ornament">✦ — ✦</div>
+        <h2 class="section-title">Nuestras Fotos</h2>
+        <p class="section-subtitle">Los mejores momentos juntos</p>
+    </div>
+    <!-- Row 1: scrolls left -->
+    <div class="carousel reveal" id="carousel">
+        <div class="carousel-track" id="carouselTrack">
+            <div class="carousel-slide"><img src="img/1-p.jpg" alt="Recuerdo 1" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/2-p.jpg" alt="Recuerdo 2" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/3-p.jpg" alt="Recuerdo 3" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/4-p.jpg" alt="Recuerdo 4" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/5-p.jpg" alt="Recuerdo 5" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/6-p.jpg" alt="Recuerdo 6" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/7-p.jpg" alt="Recuerdo 7" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/8-p.jpg" alt="Recuerdo 8" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/9-p.jpg" alt="Recuerdo 9" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/10-p.jpg" alt="Recuerdo 10" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/11-p.jpg" alt="Recuerdo 11" loading="lazy"></div>
+        </div>
+    </div>
+    <!-- Row 2: scrolls right (reverse) -->
+    <div class="carousel carousel-reverse reveal" id="carouselReverse">
+        <div class="carousel-track carousel-track-reverse" id="carouselTrackReverse">
+            <div class="carousel-slide"><img src="img/12-p.jpg" alt="Recuerdo 12" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/13-p.jpg" alt="Recuerdo 13" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/14-p.jpg" alt="Recuerdo 14" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/15-p.jpg" alt="Recuerdo 15" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/16-p.jpg" alt="Recuerdo 16" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/17-p.jpg" alt="Recuerdo 17" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/18-p.jpg" alt="Recuerdo 18" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/19-p.jpg" alt="Recuerdo 19" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/20-p.jpg" alt="Recuerdo 20" loading="lazy"></div>
+            <div class="carousel-slide"><img src="img/21-p.jpg" alt="Recuerdo 21" loading="lazy"></div>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== DEDICATORIAS ===== -->
+<section class="section" id="messages-section">
+    <div class="reveal">
+        <div class="ornament">♥ — ♥</div>
+        <h2 class="section-title">Dedicatorias</h2>
+        <p class="section-subtitle">Palabras que salen del corazón</p>
+    </div>
+    <div class="message-list reveal" id="messageList">
+        <!-- Pre-loaded message rendered by JS -->
+    </div>
+    <div class="message-form reveal">
+        <p class="message-form-title">✦ Escribe tu dedicatoria ✦</p>
+        <div class="form-group">
+            <label for="msgAuthor">De parte de:</label>
+            <input class="input-vintage" type="text" id="msgAuthor" placeholder="Tu nombre">
+        </div>
+        <div class="form-group">
+            <label for="msgText">Tu dedicatoria:</label>
+            <textarea class="textarea-vintage" id="msgText" placeholder="Escribe tu mensaje aquí..."></textarea>
+        </div>
+        <div class="btn-center" style="margin-top:16px;">
+            <button class="btn-gold" id="btnAddMsg" onclick="addMessage()">✦ Agregar dedicatoria</button>
+        </div>
+    </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- ===== POR QUÉ TE QUEREMOS ===== -->
+<section class="section" id="love-section">
+    <div class="reveal">
+        <div class="ornament">✦ ♥ ✦</div>
+        <h2 class="section-title">Por qué te queremos</h2>
+        <p class="section-subtitle">Las razones son infinitas</p>
+    </div>
+    <div class="love-grid reveal" id="loveGrid">
+        <!-- Pre-loaded cards rendered by JS -->
+    </div>
+    <div class="love-form reveal">
+        <input class="input-vintage" type="text" id="loveInput" placeholder="Agrega una razón…">
+        <button class="btn-add" id="btnAddLove" onclick="addLove()" title="Agregar razón">+</button>
+    </div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer id="footer">
+    <p class="footer-text">"La vida es mejor cuando se celebra contigo"</p>
+    <div class="footer-hearts">♥ ♥ ♥ ♥ ♥</div>
+    <div class="footer-author">
+        <p class="footer-author-label">Hecho por:</p>
+        <p class="footer-author-name">Jose García</p>
+        <p class="footer-author-msg">con mucho amor para ti</p>
+    </div>
+</footer>
+
+<!-- Scripts -->
+<script src="js/main.js"></script>
+</body>
+</html>
