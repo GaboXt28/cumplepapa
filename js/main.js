@@ -7,6 +7,7 @@
     'use strict';
 
     /* ======= CONFIG ======= */
+    const API_URL = 'api.php';
     const LOVE_ICONS = ['❤️', '🌟', '✨', '💛', '🤗', '😊', '🎉', '💫', '🌻', '🥂'];
     const INITIAL_LOVE_REASONS = [
         ['Por tu sonrisa que ilumina cualquier día', '❤️'],
@@ -34,12 +35,51 @@
         '🌟 Por ser el mejor papá del mundo'
     ];
 
-    let loveIconIndex = INITIAL_LOVE_REASONS.length;
+    let loveIconIndex = 0;
+
+    /* Flag para saber si el servidor soporta PHP */
+    let serverAvailable = false;
 
     /* ======= DOM REFS ======= */
     const $ = (sel) => document.querySelector(sel);
     const messageList = $('#messageList');
     const loveGrid = $('#loveGrid');
+
+    /* ============================================================
+       API — Comunicación con el servidor
+       ============================================================ */
+    async function apiRequest(action, method, body) {
+        try {
+            const opts = {
+                method: method || 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            };
+            if (body) opts.body = JSON.stringify(body);
+
+            const res = await fetch(`${API_URL}?action=${action}`, opts);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } catch (err) {
+            console.warn('API no disponible, usando localStorage:', err.message);
+            return null;
+        }
+    }
+
+    /* ============================================================
+       LOCALSTORAGE — Respaldo si PHP no está disponible
+       ============================================================ */
+    function localGet(key) {
+        try {
+            const data = localStorage.getItem('cumplepapa_' + key);
+            return data ? JSON.parse(data) : null;
+        } catch { return null; }
+    }
+
+    function localSet(key, data) {
+        try {
+            localStorage.setItem('cumplepapa_' + key, JSON.stringify(data));
+        } catch { /* storage full or unavailable */ }
+    }
 
     /* ============================================================
        PARTICLES — golden dust on cover
@@ -270,7 +310,7 @@
         return card;
     }
 
-    function addMessage() {
+    async function addMessage() {
         const authorEl = $('#msgAuthor');
         const textEl = $('#msgText');
         const author = authorEl.value.trim();
@@ -279,10 +319,46 @@
             showToast('Completa todos los campos');
             return;
         }
-        messageList.appendChild(renderMessage(author, text));
-        authorEl.value = '';
-        textEl.value = '';
-        showToast('💌 ¡Dedicatoria agregada!');
+
+        // Deshabilitar botón mientras se guarda
+        const btn = $('#btnAddMsg');
+        btn.disabled = true;
+        btn.textContent = '✦ Guardando...';
+
+        if (serverAvailable) {
+            // Guardar en servidor
+            const result = await apiRequest('add_message', 'POST', { author, text });
+            if (result && result.success) {
+                messageList.appendChild(renderMessage(
+                    result.message.author,
+                    result.message.text,
+                    result.message.date
+                ));
+                authorEl.value = '';
+                textEl.value = '';
+                showToast('💌 ¡Dedicatoria guardada!');
+            } else {
+                // Fallback a localStorage
+                saveToLocal(author, text);
+            }
+        } else {
+            // Usar localStorage
+            saveToLocal(author, text);
+        }
+
+        btn.disabled = false;
+        btn.textContent = '✦ Agregar dedicatoria';
+    }
+
+    function saveToLocal(author, text) {
+        const date = formatDate();
+        const messages = localGet('messages') || [];
+        messages.push({ author, text, date, id: 'msg_' + Date.now() });
+        localSet('messages', messages);
+        messageList.appendChild(renderMessage(author, text, date));
+        $('#msgAuthor').value = '';
+        $('#msgText').value = '';
+        showToast('💌 ¡Dedicatoria guardada localmente!');
     }
 
     /* ============================================================
@@ -295,15 +371,34 @@
         return card;
     }
 
-    function addLove() {
+    async function addLove() {
         const input = $('#loveInput');
         const text = input.value.trim();
         if (!text) return;
         const icon = LOVE_ICONS[loveIconIndex % LOVE_ICONS.length];
         loveIconIndex++;
+
+        if (serverAvailable) {
+            const result = await apiRequest('add_love', 'POST', { text, icon });
+            if (result && result.success) {
+                loveGrid.appendChild(renderLoveCard(result.love.text, result.love.icon));
+                input.value = '';
+                showToast('♥ ¡Razón guardada!');
+            } else {
+                saveLoveToLocal(text, icon);
+            }
+        } else {
+            saveLoveToLocal(text, icon);
+        }
+    }
+
+    function saveLoveToLocal(text, icon) {
+        const love = localGet('love') || [];
+        love.push({ text, icon, id: 'love_' + Date.now() });
+        localSet('love', love);
         loveGrid.appendChild(renderLoveCard(text, icon));
-        input.value = '';
-        showToast('♥ ¡Razón agregada!');
+        $('#loveInput').value = '';
+        showToast('♥ ¡Razón guardada localmente!');
     }
 
     /* ============================================================
@@ -347,6 +442,74 @@
     }
 
     /* ============================================================
+       CARGAR DATOS GUARDADOS
+       ============================================================ */
+    async function loadSavedData() {
+        // Intentar cargar del servidor primero
+        const seedResult = await apiRequest('seed', 'GET');
+        if (seedResult && seedResult.success) {
+            serverAvailable = true;
+        }
+
+        if (serverAvailable) {
+            const data = await apiRequest('get_all', 'GET');
+            if (data && data.success) {
+                // Renderizar mensajes del servidor
+                if (data.messages && data.messages.length > 0) {
+                    data.messages.forEach(msg => {
+                        messageList.appendChild(renderMessage(msg.author, msg.text, msg.date));
+                    });
+                    loveIconIndex = data.love ? data.love.length : 0;
+                }
+
+                // Renderizar razones del servidor
+                if (data.love && data.love.length > 0) {
+                    data.love.forEach(item => {
+                        loveGrid.appendChild(renderLoveCard(item.text, item.icon));
+                    });
+                }
+
+                console.log('✅ Datos cargados del servidor');
+                return;
+            }
+        }
+
+        // Fallback: usar datos locales + iniciales
+        console.log('ℹ️ Usando localStorage como respaldo');
+        loadFromLocalStorage();
+    }
+
+    function loadFromLocalStorage() {
+        // Cargar mensajes guardados localmente
+        const savedMessages = localGet('messages');
+        if (savedMessages && savedMessages.length > 0) {
+            savedMessages.forEach(msg => {
+                messageList.appendChild(renderMessage(msg.author, msg.text, msg.date));
+            });
+        } else {
+            // Mostrar mensaje inicial por defecto
+            messageList.appendChild(
+                renderMessage(INITIAL_MESSAGE.author, INITIAL_MESSAGE.text, '26 de abril de 2026')
+            );
+        }
+
+        // Cargar razones guardadas localmente
+        const savedLove = localGet('love');
+        if (savedLove && savedLove.length > 0) {
+            savedLove.forEach(item => {
+                loveGrid.appendChild(renderLoveCard(item.text, item.icon));
+            });
+            loveIconIndex = savedLove.length;
+        } else {
+            // Mostrar razones iniciales por defecto
+            INITIAL_LOVE_REASONS.forEach(([text, icon]) => {
+                loveGrid.appendChild(renderLoveCard(text, icon));
+            });
+            loveIconIndex = INITIAL_LOVE_REASONS.length;
+        }
+    }
+
+    /* ============================================================
        EXPOSE GLOBAL FUNCTIONS (for onclick handlers in HTML)
        ============================================================ */
     window.addMessage = addMessage;
@@ -356,16 +519,9 @@
     /* ============================================================
        INIT
        ============================================================ */
-    function init() {
-        // Default message
-        messageList.appendChild(
-            renderMessage(INITIAL_MESSAGE.author, INITIAL_MESSAGE.text, '26 de abril de 2026')
-        );
-
-        // Default love reasons
-        INITIAL_LOVE_REASONS.forEach(([text, icon]) => {
-            loveGrid.appendChild(renderLoveCard(text, icon));
-        });
+    async function init() {
+        // Cargar datos guardados (servidor o localStorage)
+        await loadSavedData();
 
         // Features
         initParticles();
