@@ -36,8 +36,6 @@
     ];
 
     let loveIconIndex = 0;
-
-    /* Flag para saber si el servidor soporta PHP */
     let serverAvailable = false;
 
     /* ======= DOM REFS ======= */
@@ -46,7 +44,7 @@
     const loveGrid = $('#loveGrid');
 
     /* ============================================================
-       API — Comunicación con el servidor
+       API — Comunicación con el servidor MySQL
        ============================================================ */
     async function apiRequest(action, method, body) {
         try {
@@ -58,27 +56,12 @@
 
             const res = await fetch(`${API_URL}?action=${action}`, opts);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return await res.json();
+            const data = await res.json();
+            return data;
         } catch (err) {
-            console.warn('API no disponible, usando localStorage:', err.message);
+            console.warn('Error de API:', err.message);
             return null;
         }
-    }
-
-    /* ============================================================
-       LOCALSTORAGE — Respaldo si PHP no está disponible
-       ============================================================ */
-    function localGet(key) {
-        try {
-            const data = localStorage.getItem('cumplepapa_' + key);
-            return data ? JSON.parse(data) : null;
-        } catch { return null; }
-    }
-
-    function localSet(key, data) {
-        try {
-            localStorage.setItem('cumplepapa_' + key, JSON.stringify(data));
-        } catch { /* storage full or unavailable */ }
     }
 
     /* ============================================================
@@ -128,7 +111,6 @@
         }
         draw();
 
-        // Pause when cover is not visible
         const observer = new IntersectionObserver((entries) => {
             animating = entries[0].isIntersecting;
             if (animating) draw();
@@ -143,9 +125,8 @@
         const container = $('#coverBgMessages');
         if (!container) return;
 
-        // Messages only at TOP and BOTTOM edges — avoid the center where title lives
-        const topZone = COVER_BG_TEXTS.slice(0, 6);    // top area (0–18%)
-        const bottomZone = COVER_BG_TEXTS.slice(6);     // bottom area (78–95%)
+        const topZone = COVER_BG_TEXTS.slice(0, 6);
+        const bottomZone = COVER_BG_TEXTS.slice(6);
 
         topZone.forEach((text, i) => {
             const el = document.createElement('span');
@@ -294,9 +275,9 @@
        MESSAGES / DEDICATORIAS
        ============================================================ */
     function formatDate() {
+        const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
         const now = new Date();
-        const opts = { day: 'numeric', month: 'long', year: 'numeric' };
-        return now.toLocaleDateString('es-ES', opts);
+        return `${now.getDate()} de ${months[now.getMonth()]} de ${now.getFullYear()}`;
     }
 
     function renderMessage(author, text, date) {
@@ -320,13 +301,11 @@
             return;
         }
 
-        // Deshabilitar botón mientras se guarda
         const btn = $('#btnAddMsg');
         btn.disabled = true;
         btn.textContent = '✦ Guardando...';
 
         if (serverAvailable) {
-            // Guardar en servidor
             const result = await apiRequest('add_message', 'POST', { author, text });
             if (result && result.success) {
                 messageList.appendChild(renderMessage(
@@ -338,27 +317,18 @@
                 textEl.value = '';
                 showToast('💌 ¡Dedicatoria guardada!');
             } else {
-                // Fallback a localStorage
-                saveToLocal(author, text);
+                showToast('❌ Error al guardar. Intenta de nuevo.');
             }
         } else {
-            // Usar localStorage
-            saveToLocal(author, text);
+            // Fallback sin servidor
+            messageList.appendChild(renderMessage(author, text));
+            authorEl.value = '';
+            textEl.value = '';
+            showToast('⚠️ Guardado solo localmente (sin conexión al servidor)');
         }
 
         btn.disabled = false;
         btn.textContent = '✦ Agregar dedicatoria';
-    }
-
-    function saveToLocal(author, text) {
-        const date = formatDate();
-        const messages = localGet('messages') || [];
-        messages.push({ author, text, date, id: 'msg_' + Date.now() });
-        localSet('messages', messages);
-        messageList.appendChild(renderMessage(author, text, date));
-        $('#msgAuthor').value = '';
-        $('#msgText').value = '';
-        showToast('💌 ¡Dedicatoria guardada localmente!');
     }
 
     /* ============================================================
@@ -385,20 +355,13 @@
                 input.value = '';
                 showToast('♥ ¡Razón guardada!');
             } else {
-                saveLoveToLocal(text, icon);
+                showToast('❌ Error al guardar. Intenta de nuevo.');
             }
         } else {
-            saveLoveToLocal(text, icon);
+            loveGrid.appendChild(renderLoveCard(text, icon));
+            input.value = '';
+            showToast('⚠️ Guardado solo localmente');
         }
-    }
-
-    function saveLoveToLocal(text, icon) {
-        const love = localGet('love') || [];
-        love.push({ text, icon, id: 'love_' + Date.now() });
-        localSet('love', love);
-        loveGrid.appendChild(renderLoveCard(text, icon));
-        $('#loveInput').value = '';
-        showToast('♥ ¡Razón guardada localmente!');
     }
 
     /* ============================================================
@@ -415,19 +378,16 @@
         const slides = track.querySelectorAll('.carousel-slide');
         if (!slides.length) return;
 
-        // Duplicate slides for seamless infinite loop
         slides.forEach(slide => {
             const clone = slide.cloneNode(true);
             track.appendChild(clone);
         });
 
-        // Calculate duration based on content width
-        const slideW = 324; // 300 width + 24 gap
+        const slideW = 324;
         const totalWidth = slides.length * slideW;
         const duration = totalWidth / speedPx;
         track.style.setProperty(durationVar, `${duration}s`);
 
-        // Click to open lightbox on all slides (including clones)
         track.querySelectorAll('.carousel-slide').forEach(slide => {
             const img = slide.querySelector('img');
             if (img) {
@@ -442,71 +402,51 @@
     }
 
     /* ============================================================
-       CARGAR DATOS GUARDADOS
+       CARGAR DATOS DEL SERVIDOR
        ============================================================ */
     async function loadSavedData() {
-        // Intentar cargar del servidor primero
-        const seedResult = await apiRequest('seed', 'GET');
-        if (seedResult && seedResult.success) {
-            serverAvailable = true;
-        }
+        // Verificar si el servidor está disponible
+        const ping = await apiRequest('ping', 'GET');
 
-        if (serverAvailable) {
+        if (ping && ping.success) {
+            serverAvailable = true;
+            console.log('✅ Servidor MySQL conectado');
+
+            // Cargar todos los datos
             const data = await apiRequest('get_all', 'GET');
             if (data && data.success) {
-                // Renderizar mensajes del servidor
+                // Renderizar mensajes
                 if (data.messages && data.messages.length > 0) {
                     data.messages.forEach(msg => {
                         messageList.appendChild(renderMessage(msg.author, msg.text, msg.date));
                     });
-                    loveIconIndex = data.love ? data.love.length : 0;
                 }
 
-                // Renderizar razones del servidor
+                // Renderizar razones
                 if (data.love && data.love.length > 0) {
                     data.love.forEach(item => {
                         loveGrid.appendChild(renderLoveCard(item.text, item.icon));
                     });
+                    loveIconIndex = data.love.length;
                 }
-
-                console.log('✅ Datos cargados del servidor');
                 return;
             }
         }
 
-        // Fallback: usar datos locales + iniciales
-        console.log('ℹ️ Usando localStorage como respaldo');
-        loadFromLocalStorage();
+        // Fallback: datos estáticos si el servidor no está disponible
+        console.warn('⚠️ Servidor no disponible, mostrando datos por defecto');
+        serverAvailable = false;
+        loadDefaults();
     }
 
-    function loadFromLocalStorage() {
-        // Cargar mensajes guardados localmente
-        const savedMessages = localGet('messages');
-        if (savedMessages && savedMessages.length > 0) {
-            savedMessages.forEach(msg => {
-                messageList.appendChild(renderMessage(msg.author, msg.text, msg.date));
-            });
-        } else {
-            // Mostrar mensaje inicial por defecto
-            messageList.appendChild(
-                renderMessage(INITIAL_MESSAGE.author, INITIAL_MESSAGE.text, '26 de abril de 2026')
-            );
-        }
-
-        // Cargar razones guardadas localmente
-        const savedLove = localGet('love');
-        if (savedLove && savedLove.length > 0) {
-            savedLove.forEach(item => {
-                loveGrid.appendChild(renderLoveCard(item.text, item.icon));
-            });
-            loveIconIndex = savedLove.length;
-        } else {
-            // Mostrar razones iniciales por defecto
-            INITIAL_LOVE_REASONS.forEach(([text, icon]) => {
-                loveGrid.appendChild(renderLoveCard(text, icon));
-            });
-            loveIconIndex = INITIAL_LOVE_REASONS.length;
-        }
+    function loadDefaults() {
+        messageList.appendChild(
+            renderMessage(INITIAL_MESSAGE.author, INITIAL_MESSAGE.text, '26 de abril de 2026')
+        );
+        INITIAL_LOVE_REASONS.forEach(([text, icon]) => {
+            loveGrid.appendChild(renderLoveCard(text, icon));
+        });
+        loveIconIndex = INITIAL_LOVE_REASONS.length;
     }
 
     /* ============================================================
@@ -520,10 +460,8 @@
        INIT
        ============================================================ */
     async function init() {
-        // Cargar datos guardados (servidor o localStorage)
         await loadSavedData();
 
-        // Features
         initParticles();
         initCoverMessages();
         initNav();
@@ -531,7 +469,6 @@
         initLightbox();
         initCarousel();
 
-        // Keyboard shortcuts for love input
         const loveInput = $('#loveInput');
         if (loveInput) {
             loveInput.addEventListener('keydown', (e) => {
@@ -540,7 +477,6 @@
         }
     }
 
-    // Start when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
